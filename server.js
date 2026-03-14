@@ -71,10 +71,10 @@ When the order is complete, say something like: "Great! Your order is [items]. Y
 app.post('/incoming-call', (req, res) => {
   const twiml = new twilio.twiml.VoiceResponse();
 
-  // Greet the caller
+  // Greet immediately before opening stream
   twiml.say(
-    { voice: 'Polly.Lupe-Neural', language: 'es-US' },
-    'Thank you for calling Tacos 203! Gracias por llamar a Tacos 203. Hold on one moment while I connect you with Sofia, our AI assistant.'
+    { voice: 'Polly.Joanna-Neural', language: 'en-US' },
+    'Hi! Thanks for calling Tacos 203. One moment please.'
   );
 
   // Open a media stream to our WebSocket
@@ -83,6 +83,9 @@ app.post('/incoming-call', (req, res) => {
     url: `wss://${req.headers.host}/media-stream`,
     track: 'inbound_track'
   });
+
+  // Keep the call alive while WebSocket handles it
+  twiml.pause({ length: 120 });
 
   res.type('text/xml');
   res.send(twiml.toString());
