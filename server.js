@@ -82,8 +82,8 @@ function buildResponse(text, callSid) {
     method: 'POST',
     language: 'en-US',
     enhanced: 'true',
-    speechTimeout: '2',
-    timeout: 8,
+    speechTimeout: 'auto',
+    timeout: 15,
     hints: 'tacos, taco, birria, pastor, chorizo, cactus, buche, tripe, wings, churros, corn, fries, beans, order, pickup, delivery, vegetarian, gluten, spicy, dairy, pork, price, total, con todo, plain, yes, no, that is all, done',
   });
   gather.say(
