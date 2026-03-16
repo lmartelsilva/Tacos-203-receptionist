@@ -11,136 +11,110 @@ app.use(express.json());
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const conversations = {};
 
-const SYSTEM_PROMPT = `You are Sofia, the friendly bilingual AI phone receptionist for Tacos 203, a Mexican fast-food restaurant in Connecticut. You answer calls, respond to menu questions, and take orders over the phone.
+const SYSTEM_PROMPT = `You are Sofia, a warm and friendly AI phone receptionist for Tacos 203, a Mexican fast-food restaurant in Connecticut.
 
-VOICE & PERSONALITY RULES:
-- Sound like a warm, real person — NOT a robot. Use natural contractions: "I'd", "we've", "that's", "you'll", "don't", "can't", "won't", "it's".
-- Never say "Certainly!", "Absolutely!", "Of course!", "Great choice!" — these sound fake.
-- Use casual friendly phrases: "Sure!", "Got it!", "No problem!", "Sounds good!", "Perfect!"
-- Keep responses to 1-2 short sentences max. Pause naturally between thoughts.
-- PICKUP ONLY — no delivery. If asked: "We're pickup only, but come on in — we'd love to see you!"
-- Detect language from first message, respond in same language always.
-- Ask ONE question at a time.
-- For orders: confirm "con todo" (cilantro, onions, salsa) or "plain" for each item.
-- Say prices naturally: "three ninety-nine" not "$3.99".
-- At end of order: read back everything and give total warmly.
-- If you don't know something: "Let me check on that for you" or "Good question — I believe..."
+PERSONALITY — sound like a real person, not a robot:
+- Use natural contractions: I'd, we've, that's, you'll, don't, can't, it's
+- Use casual phrases: "Sure!", "Got it!", "No problem!", "Sounds good!"
+- NEVER say: "Certainly!", "Absolutely!", "Of course!", "Great choice!" — too robotic
+- Max 2 short sentences per response
+- Ask ONE question at a time
 
-ALLERGY INFORMATION:
-GLUTEN/WHEAT:
-- Tacos (corn tortilla): GLUTEN FREE
-- Taco'dillas (flour tortilla): CONTAIN GLUTEN
-- Churros: CONTAIN GLUTEN
-- Walking Taco (corn chips): GLUTEN FREE
+IMPORTANT RULES:
+- PICKUP ONLY. No delivery. If asked: "We're pickup only, but come on in!"
+- Always respond in ENGLISH only regardless of what language the customer uses
+- Confirm each taco/taco'dilla as "con todo" or "plain"
+- Say prices as words: "three ninety-nine" not $3.99
+- Summarize full order and total at the end
 
-DAIRY:
-- Taco'dillas: CONTAIN DAIRY (chihuahua cheese)
-- All tacos: dairy free
-- Street Corn: may contain dairy
-
-SPICY:
-- Chorizo Taco'dilla: SPICY
-- TG Wings: medium-hot
-- Loaded Fries: SPICY (diablo)
-- All salsas: NON-SPICY
-
-VEGETARIAN: Cactus Taco, Cactus Taco'dilla, Cheese Taco'dilla, Street Corn, Churros.
-CONTAINS PORK: Al Pastor, Chorizo, Buche/Tripe, Charro Beans.
-NO SHELLFISH. NO NUTS. LOW SOY. LOW EGG.
+ALLERGY INFO:
+- Gluten free: all tacos (corn tortilla), walking taco, churros are gluten-free
+- Contains gluten: all taco'dillas (flour tortilla)
+- Contains dairy: all taco'dillas (chihuahua cheese)
+- Spicy: Chorizo Taco'dilla, TG Wings (medium), Loaded Fries
+- All salsas: NON-spicy
+- Vegetarian: Cactus Taco, Cactus Taco'dilla, Cheese Taco'dilla, Street Corn, Churros
+- Contains pork: Al Pastor, Chorizo, Buche/Tripe, Charro Beans
+- No shellfish, no nuts
 
 MENU:
-TACOS (corn tortilla — GLUTEN FREE):
+TACOS — corn tortilla, gluten free. Con todo = cilantro, onions, salsa. Plain = protein only.
 - Al Pastor Taco: marinated pork — $3.99
 - Chorizo Taco: sausage — $3.99
 - Cactus Taco: vegetarian — $4.45
 - Buche/Tripe Taco: pork tripe — $4.95
 - Steak Birria Taco: slow-cooked steak — $5.45
 
-TACO'DILLAS (flour tortilla + chihuahua cheese — HAS GLUTEN + DAIRY):
+TACO'DILLAS — flour tortilla + chihuahua cheese. Contains gluten and dairy.
 - Al Pastor Taco'dilla — $6.50
-- Chorizo Taco'dilla: SPICY — $6.50
+- Chorizo Taco'dilla: spicy — $6.50
 - Cactus Taco'dilla: vegetarian — $6.50
 - Buche/Tripe Taco'dilla — $6.50
 - Steak Birria Taco'dilla — $6.50
 - Cheese Taco'dilla: vegetarian — $5.00
 
 SNACKS:
-- Walking Taco — $6.99
+- Walking Taco: corn chips + al pastor — $6.99
 - Street Corn — $6.99
-- TG Wings: 7 wings, Valentina sauce, blue cheese dip — $9.99
+- TG Wings: 7 wings, Valentina buffalo sauce, blue cheese dip — $9.99
 - Charro Beans: contains meat — $4.99
 - Loaded Fries: spicy, contains meat — $7.00
 - Churros — $8.99`;
 
 function escapeXml(str) {
   return str
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&apos;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
-function detectLanguage(text) {
-  if (!text) return 'en';
-  return /[áéíóúñ¿¡]/.test(text) ||
-    /\b(hola|gracias|sí|si|claro|quiero|tengo|cómo|como|qué|que|cuánto|cuanto|tienen|buenas|bueno|necesito|me|para|dos|tres|por favor|puedo|tiene|hay|quisiera|dame|quiero|favor|deme|orden|ordeno|tacos|también|tambien)\b/i.test(text)
-    ? 'es' : 'en';
-}
-
-function buildGatherResponse(textToSay, callSid, lang = 'en') {
-  const isSpanish = lang === 'es';
-  const voice = isSpanish ? 'Polly.Conchita' : 'Polly.Joanna-Neural';
-  const speechLang = isSpanish ? 'es-ES' : 'en-US';
-
+function buildResponse(text, callSid) {
   const twiml = new twilio.twiml.VoiceResponse();
-
   const gather = twiml.gather({
     input: 'speech',
-    action: `/respond?callSid=${callSid}&lang=${lang}`,
+    action: `/respond?callSid=${callSid}`,
     method: 'POST',
-    language: speechLang,
-    hints: isSpanish
-      ? 'hola, sí, no, quiero, tacos, orden, gracias, con todo, plain, para llevar, pickup, delivery, alergias, vegetariano, picante, precio, cuánto, cuántos'
-      : 'yes, no, I want, tacos, order, thank you, con todo, plain, pickup, delivery, allergies, vegetarian, spicy, price, how much',
-    speechTimeout: '3',
-    timeout: 7,
+    language: 'en-US',
+    hints: 'yes, no, I want, tacos, order, pickup, con todo, plain, allergies, vegetarian, spicy, gluten, dairy, price, total',
+    speechTimeout: '2',
+    timeout: 8,
     enhanced: 'true',
   });
-
-  gather.say({ voice, language: speechLang }, escapeXml(textToSay));
-  twiml.redirect(`/no-input?callSid=${callSid}&lang=${lang}`);
+  gather.say(
+    { voice: 'Polly.Joanna-Neural', language: 'en-US' },
+    escapeXml(text)
+  );
+  twiml.redirect(`/no-input?callSid=${callSid}`);
   return twiml.toString();
 }
 
 app.post('/incoming-call', (req, res) => {
   const callSid = req.body.CallSid;
   conversations[callSid] = [];
-  const greeting = "Hey, thanks for calling Tacos 203! I'm Sofia. Just so you know, we're pickup only. What can I get for you today?";
+  console.log(`New call: ${callSid}`);
   res.type('text/xml');
-  res.send(buildGatherResponse(greeting, callSid, 'en'));
+  res.send(buildResponse(
+    "Hey, thanks for calling Tacos 203! I'm Sofia. We're pickup only. What can I get for you today?",
+    callSid
+  ));
 });
 
 app.post('/respond', async (req, res) => {
   const callSid = req.query.callSid || req.body.CallSid;
-  const speechResult = req.body.SpeechResult || '';
-  const prevLang = req.query.lang || 'en';
-  const lang = speechResult.trim() ? detectLanguage(speechResult) : prevLang;
-
-  console.log(`[${callSid}] [${lang}] Customer: "${speechResult}"`);
+  const speech = req.body.SpeechResult || '';
+  console.log(`[${callSid}] Customer: "${speech}"`);
 
   if (!conversations[callSid]) conversations[callSid] = [];
 
-  if (!speechResult.trim()) {
-    const sorry = lang === 'es'
-      ? 'No te escuché bien, ¿puedes repetir?'
-      : "Didn't catch that, could you repeat?";
+  if (!speech.trim()) {
     res.type('text/xml');
-    res.send(buildGatherResponse(sorry, callSid, lang));
+    res.send(buildResponse("Didn't catch that — could you repeat?", callSid));
     return;
   }
 
-  conversations[callSid].push({ role: 'user', content: speechResult });
+  conversations[callSid].push({ role: 'user', content: speech });
 
   try {
     const response = await anthropic.messages.create({
@@ -150,33 +124,28 @@ app.post('/respond', async (req, res) => {
       messages: conversations[callSid],
     });
 
-    const aiText = response.content[0].text;
-    conversations[callSid].push({ role: 'assistant', content: aiText });
-    console.log(`[${callSid}] Sofia: "${aiText}"`);
+    const reply = response.content[0].text;
+    conversations[callSid].push({ role: 'assistant', content: reply });
+    console.log(`[${callSid}] Sofia: "${reply}"`);
 
     res.type('text/xml');
-    res.send(buildGatherResponse(aiText, callSid, lang));
+    res.send(buildResponse(reply, callSid));
   } catch (err) {
-    console.error('Error:', err);
-    const errMsg = lang === 'es'
-      ? 'Hubo un problema técnico, intenta de nuevo.'
-      : 'Technical issue, please try again.';
+    console.error('Error:', err.message);
     res.type('text/xml');
-    res.send(buildGatherResponse(errMsg, callSid, lang));
+    res.send(buildResponse("Sorry, I had a little hiccup — give me one second and try again!", callSid));
   }
 });
 
 app.get('/no-input', (req, res) => {
   const callSid = req.query.callSid;
-  const lang = req.query.lang || 'en';
-  const msg = lang === 'es'
-    ? '¿Sigues ahí? ¿En qué te puedo ayudar?'
-    : 'Still there? How can I help?';
   res.type('text/xml');
-  res.send(buildGatherResponse(msg, callSid, lang));
+  res.send(buildResponse("Still there? What can I get for you?", callSid));
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'Tacos 203 AI Receptionist' }));
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'Tacos 203 AI Receptionist' });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌮 Tacos 203 running on port ${PORT}`));
