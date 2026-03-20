@@ -137,7 +137,16 @@ app.post('/respond', async function(req, res) {
         saveOrder(callSid, conv.phone, customerName, orderSummary, orderNumber);
         sendSms(conv.phone, customerName, orderSummary, orderNumber);
         console.log('Order #' + orderNumber + ' saved for ' + customerName);
-        reply = spokenReply || 'Thanks for calling Tacos 203, we will see you soon!';
+        // Build a goodbye response that speaks then hangs up gracefully
+        var goodbyeText = spokenReply || 'Thanks for calling Tacos 203, we will see you soon!';
+        conv.messages.push({ role: 'assistant', content: goodbyeText });
+        var byeTwiml = new twilio.twiml.VoiceResponse();
+        byeTwiml.say({ voice: 'Polly.Joanna-Neural', language: 'en-US' }, escapeXml(goodbyeText));
+        byeTwiml.pause({ length: 1 });
+        byeTwiml.hangup();
+        res.type('text/xml');
+        res.send(byeTwiml.toString());
+        return;
       }
     }
     conv.messages.push({ role: 'assistant', content: reply });
