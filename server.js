@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `You are Sofia, the AI phone receptionist for Tacos 203, a
 CALL FLOW — follow this exact sequence every call:
 
 STEP 1 — GREETING (always start with exactly this):
-"Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? <break time='1s'/> What can I get for you?"
+"Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? ... What can I get for you?"
 
 STEP 2 — TAKING THE ORDER:
 - Listen carefully and repeat items back naturally as they order to confirm accuracy.
@@ -29,7 +29,7 @@ STEP 3 — UPSELL (ALWAYS do this after main order, pick ONE naturally):
 - "Most people grab some churros or street corn on the side — want to add either?"
 - "Our street corn is really popular, want to add one to your order?"
 - "The churros are a great way to finish — want to add some?"
-- Rotate suggestions naturally based on what they ordered. Only suggest once. If they say no, move on immediately.
+- Only suggest once. If they say no, move on immediately.
 
 STEP 4 — ORDER CONFIRMATION:
 Repeat the full order clearly: "Alright, I have: [list every item]. Did I get everything right?"
@@ -53,16 +53,14 @@ BEHAVIOR RULES:
 - Use: Sure, Got it, No problem, Sounds good, Perfect.
 - If customer is unsure, suggest Al Pastor Taco, Steak Birria Taco, or TG Wings as popular items.
 - If customer asks about delivery: "We are pickup only, but we would love to see you!"
-- If customer asks unrelated questions: "I can only help with orders — what can I get for you?"
 - PICKUP ONLY. No delivery ever.
 
-ALLERGY INFO (answer quickly if asked):
+ALLERGY INFO:
 - Gluten free: all tacos on corn tortilla. Taco'dillas have flour tortilla so contain gluten.
 - Dairy free: all tacos. Taco'dillas contain chihuahua cheese.
-- Spicy: Chorizo Taco'dilla, TG Wings (medium), Loaded Fries. All salsas are NON-spicy.
+- Spicy: Chorizo Taco'dilla, TG Wings medium, Loaded Fries. All salsas are NON-spicy.
 - Vegetarian: Cactus Taco, Cactus Taco'dilla, Cheese Taco'dilla, Street Corn, Churros.
-- Contains pork: Al Pastor, Chorizo, Buche/Tripe, Charro Beans.
-- No shellfish, no nuts.
+- Contains pork: Al Pastor, Chorizo, Buche/Tripe, Charro Beans. No shellfish, no nuts.
 
 FULL MENU:
 TACOS — corn tortilla, gluten free. Con todo = cilantro, onions, salsa. Plain = protein only.
@@ -89,20 +87,25 @@ SNACKS:
 - Churros — 8 ninety-nine`;
 
 function escapeXml(str) {
-  // Preserve SSML break tags before escaping
-  const preserved = str.replace(/<break time='(\d+s)'\/>/g, '___BREAK_$1___');
-  const escaped = preserved
+  return str
     .replace(/&/g, 'and')
     .replace(/</g, '')
     .replace(/>/g, '')
     .replace(/"/g, '')
     .replace(/'/g, '')
     .replace(/#/g, 'number');
-  return escaped.replace(/___BREAK_(\d+s)___/g, "<break time='$1'/>");
 }
 
 function buildResponse(text, callSid) {
   const twiml = new twilio.twiml.VoiceResponse();
+
+  // Say FIRST then listen — this prevents Sofia repeating herself
+  // when customer starts talking while she is still speaking
+  twiml.say(
+    { voice: 'Polly.Joanna-Neural', language: 'en-US' },
+    escapeXml(text)
+  );
+
   const gather = twiml.gather({
     input: 'speech',
     action: `/respond?callSid=${callSid}`,
@@ -113,10 +116,8 @@ function buildResponse(text, callSid) {
     timeout: 15,
     hints: 'tacos, taco, birria, pastor, chorizo, cactus, buche, tripe, wings, churros, corn, fries, beans, order, pickup, con todo, plain, yes, no, that is all, done, my name is, the name is',
   });
-  gather.say(
-    { voice: 'Polly.Joanna-Neural', language: 'en-US' },
-    '<speak>' + escapeXml(text) + '</speak>'
-  );
+  gather.pause({ length: 1 });
+
   twiml.redirect(`/no-input?callSid=${callSid}`);
   return twiml.toString();
 }
@@ -127,7 +128,7 @@ app.post('/incoming-call', (req, res) => {
   console.log(`New call: ${callSid}`);
   res.type('text/xml');
   res.send(buildResponse(
-    "Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? <break time='1s'/> What can I get for you?",
+    "Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? ... What can I get for you?",
     callSid
   ));
 });
