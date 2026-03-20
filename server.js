@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `You are Sofia, the AI phone receptionist for Tacos 203, a
 CALL FLOW — follow this exact sequence every call:
 
 STEP 1 — GREETING (always start with exactly this):
-"Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? What can I get for you?"
+"Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? <break time='1s'/> What can I get for you?"
 
 STEP 2 — TAKING THE ORDER:
 - Listen carefully and repeat items back naturally as they order to confirm accuracy.
@@ -24,11 +24,12 @@ STEP 2 — TAKING THE ORDER:
 - Example: "Got it, 3 al pastor tacos. Would you like everything on them — cilantro, onions, and salsa?"
 - Keep it moving, dont slow down.
 
-STEP 3 — UPSELL (ALWAYS do this after main order, pick one naturally):
-- "Would you like to add some churros or street corn? They go great with that."
-- "Most people also love our birria taco — want to add one?"
-- "Can I add a walking taco or TG wings to your order?"
-- Only suggest once. If they say no, move on immediately.
+STEP 3 — UPSELL (ALWAYS do this after main order, pick ONE naturally):
+- "Our TG Wings are amazing — 7 wings in Valentina buffalo sauce. Want to add those?"
+- "Most people grab some churros or street corn on the side — want to add either?"
+- "Our street corn is really popular, want to add one to your order?"
+- "The churros are a great way to finish — want to add some?"
+- Rotate suggestions naturally based on what they ordered. Only suggest once. If they say no, move on immediately.
 
 STEP 4 — ORDER CONFIRMATION:
 Repeat the full order clearly: "Alright, I have: [list every item]. Did I get everything right?"
@@ -88,13 +89,16 @@ SNACKS:
 - Churros — 8 ninety-nine`;
 
 function escapeXml(str) {
-  return str
+  // Preserve SSML break tags before escaping
+  const preserved = str.replace(/<break time='(\d+s)'\/>/g, '___BREAK_$1___');
+  const escaped = preserved
     .replace(/&/g, 'and')
     .replace(/</g, '')
     .replace(/>/g, '')
     .replace(/"/g, '')
     .replace(/'/g, '')
     .replace(/#/g, 'number');
+  return escaped.replace(/___BREAK_(\d+s)___/g, "<break time='$1'/>");
 }
 
 function buildResponse(text, callSid) {
@@ -111,7 +115,7 @@ function buildResponse(text, callSid) {
   });
   gather.say(
     { voice: 'Polly.Joanna-Neural', language: 'en-US' },
-    escapeXml(text)
+    '<speak>' + escapeXml(text) + '</speak>'
   );
   twiml.redirect(`/no-input?callSid=${callSid}`);
   return twiml.toString();
@@ -123,7 +127,7 @@ app.post('/incoming-call', (req, res) => {
   console.log(`New call: ${callSid}`);
   res.type('text/xml');
   res.send(buildResponse(
-    "Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? What can I get for you?",
+    "Hi! Thanks for calling Tacos 203, my name is Sofia. Are you ready for some tacos today? <break time='1s'/> What can I get for you?",
     callSid
   ));
 });
