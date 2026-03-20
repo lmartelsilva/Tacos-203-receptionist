@@ -78,11 +78,6 @@ function buildSystemPrompt(phone) {
 
 function buildResponse(text, callSid) {
   var twiml = new twilio.twiml.VoiceResponse();
-  // Say FIRST, completely finish speaking before listening
-  twiml.say({ voice: 'Polly.Joanna-Neural', language: 'en-US' }, escapeXml(text));
-  // Small pause so Sofia fully finishes before mic opens
-  twiml.pause({ length: 1 });
-  // NOW open the gather to listen
   var gather = twiml.gather({
     input: 'speech',
     action: '/respond?callSid=' + callSid,
@@ -90,10 +85,10 @@ function buildResponse(text, callSid) {
     language: 'en-US',
     enhanced: 'true',
     speechTimeout: 'auto',
-    timeout: 15,
+    timeout: 20,
     hints: 'tacos, taco, birria, pastor, chorizo, cactus, buche, tripe, wings, churros, corn, fries, beans, order, pickup, con todo, plain, yes, no, done, my name is',
   });
-  gather.pause({ length: 1 });
+  gather.say({ voice: 'Polly.Joanna-Neural', language: 'en-US' }, escapeXml(text));
   twiml.redirect('/no-input?callSid=' + callSid);
   return twiml.toString();
 }
