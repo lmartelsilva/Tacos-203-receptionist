@@ -124,18 +124,19 @@ function buildSystemPrompt(phone) {
 
 function buildResponse(text, callSid) {
   var twiml = new twilio.twiml.VoiceResponse();
-  var gather = twiml.gather({
+  twiml.say({ voice: 'Polly.Joanna-Neural', language: 'en-US' }, escapeXml(text));
+  twiml.pause({ length: 1 });
+  twiml.gather({
     input: 'speech',
     action: '/respond?callSid=' + callSid,
     method: 'POST',
     language: 'en-US',
     enhanced: 'true',
     speechTimeout: 'auto',
-    timeout: 15,
+    timeout: 20,
+    actionOnEmptyResult: true,
     hints: 'tacos, taco, birria, pastor, chorizo, cactus, buche, tripe, wings, churros, corn, fries, beans, order, pickup, con todo, plain, yes, no, done, same name, different name, my name is',
   });
-  gather.say({ voice: 'Polly.Joanna-Neural', language: 'en-US' }, escapeXml(text));
-  twiml.redirect('/no-input?callSid=' + callSid);
   return twiml.toString();
 }
 
