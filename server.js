@@ -71,7 +71,7 @@ function buildSystemPrompt(phone) {
 '- PICKUP ONLY. No delivery. If asked: "We are pickup only, but we would love to see you!"\n\n' +
 'CALL FLOW — follow this exact order every call:\n\n' +
 'STEP 1 - GREETING:\n' +
-'New customer: "Thank you for calling Tacos 203! Today is a wonderful day for some tacos, right? What can I get for you?"\n' +
+'New customer: "Thank you for calling Tacos 203, I am Sofia — what can I get for you today?"\n' +
 'Returning customer: "Hey [name]! So great to hear from you again at Tacos 203! What are we getting today?"\n\n' +
 'STEP 2 - TAKE THE ORDER:\n' +
 '- Let the customer order freely. Repeat each item back naturally as they say it.\n' +
@@ -147,7 +147,7 @@ app.post('/incoming-call', function(req, res) {
   var isReturning = phone && customers[phone] && customers[phone].orderCount > 0 && customers[phone].name;
   var greeting = isReturning
     ? 'Hey ' + customers[phone].name + '! So great to hear from you again at Tacos 203! What are we getting today?'
-    : 'Thank you for calling Tacos 203! Today is a wonderful day for some tacos, right? What can I get for you?';
+    : 'Thank you for calling Tacos 203, I am Sofia — what can I get for you today?';
   res.type('text/xml');
   res.send(buildResponse(greeting, callSid));
 });
