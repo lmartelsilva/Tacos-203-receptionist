@@ -70,9 +70,7 @@ function buildSystemPrompt(phone) {
 '- ENGLISH ONLY always.\n' +
 '- PICKUP ONLY. No delivery. If asked: "We are pickup only, but we would love to see you!"\n\n' +
 'CALL FLOW — follow this exact order every call:\n\n' +
-'STEP 1 - GREETING:\n' +
-'New customer: "Thank you for calling Tacos 203, I am Sofia — what can I get for you today?"\n' +
-'Returning customer: "Hey [name]! So great to hear from you again at Tacos 203! What are we getting today?"\n\n' +
+'STEP 1 - GREETING: Already done automatically. Do NOT repeat the greeting. Jump straight to taking the order.\n\n' +
 'STEP 2 - TAKE THE ORDER:\n' +
 '- Let the customer order freely. Repeat each item back naturally as they say it.\n' +
 '- For every taco and tacodilla ask: "Would you like that con todo — with cilantro, onions, and salsa — or plain?"\n' +
