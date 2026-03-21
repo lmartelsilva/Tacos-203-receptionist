@@ -169,10 +169,24 @@ app.get('/api/orders', function(req, res) {
   res.json({ orders: orders.slice(0, 50), total: orders.length });
 });
 
-app.post('/api/orders/:id/status', function(req, res) {
+app.post('/api/orders/:id/status', async function(req, res) {
   var order = orders.find(function(o) { return o.id === req.params.id; });
-  if (order) { order.status = req.body.status; res.json({ success: true }); }
-  else res.status(404).json({ error: 'Not found' });
+  if (!order) return res.status(404).json({ error: 'Not found' });
+  var prevStatus = order.status;
+  order.status = req.body.status;
+  if (req.body.status === 'ready' && prevStatus !== 'ready' && order.phone) {
+    try {
+      await twilioClient.messages.create({
+        body: 'Hi ' + (order.name || 'there') + '! Your Tacos 203 order #' + order.id + ' is ready for pickup! Come on in. 🌮',
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: order.phone
+      });
+      console.log('Ready SMS sent to ' + order.phone);
+    } catch(err) {
+      console.error('Ready SMS error:', err.message);
+    }
+  }
+  res.json({ success: true });
 });
 
 app.get('/api/stats', function(req, res) {
