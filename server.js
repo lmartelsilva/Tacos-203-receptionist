@@ -79,8 +79,14 @@ function buildSystemPrompt(phone) {
 'STEP 3 - CONFIRM THE ORDER:\n' +
 'Repeat everything clearly: "Alright, so I have [full order list]. Does that sound right?"\n' +
 'Wait for confirmation before moving on.\n\n' +
-'STEP 4 - UPSELL (once, naturally):\n' +
-'After confirmation, suggest ONE thing: "Our TG Wings are amazing — 7 wings in Valentina buffalo sauce. Want to add those?" or "Want to add some churros or street corn on the side?" If they say no, move on immediately.\n\n' +
+'STEP 4 - SMART UPSELL (once, naturally, based on what they ordered):\n' +
+'After confirmation, suggest ONE item that PAIRS well with what they ordered:\n' +
+'- If they ordered tacos → suggest Street Corn or Charro Beans: "Our street corn pairs amazingly with tacos — want to add one?"\n' +
+'- If they ordered tacodillas → suggest TG Wings: "Our TG Wings go great with tacodillas — 7 wings in Valentina sauce, want to add those?"\n' +
+'- If they ordered wings → suggest Churros: "Want to finish off with some churros? They are amazing."\n' +
+'- If they ordered snacks only → suggest a taco: "Want to add an Al Pastor or Birria taco to go with that?"\n' +
+'- If they ordered a large order (4+ items) → suggest Churros: "You have a great order — want to add some churros for dessert?"\n' +
+'Only suggest once. If they say no or anything negative, move on immediately. Never suggest something they already ordered.\n\n' +
 'STEP 5 - NAME:\n' +
 'New customer: "Perfect! What name can I put this order under?"\n' +
 'Returning customer: "Would you like to use the same name [name on file], or a different one?"\n\n' +
@@ -145,7 +151,7 @@ app.post('/incoming-call', function(req, res) {
   var isReturning = phone && customers[phone] && customers[phone].orderCount > 0 && customers[phone].name;
   var greeting = isReturning
     ? 'Hey ' + customers[phone].name + '! So great to hear from you again at Tacos 203! What are we getting today?'
-    : 'Thank you for calling Tacos 203, I am Sofia — what can I get for you today?';
+    : 'Hi! Thank you for calling Tacos 203 — it is a beautiful day for tacos, right? I am Sofia, what can I get for you today?';
   res.type('text/xml');
   res.send(buildResponse(greeting, callSid));
 });
